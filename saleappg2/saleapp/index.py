@@ -1,6 +1,7 @@
-from flask import render_template, request
+from flask import render_template, request, redirect
+from flask_login import current_user, login_user, logout_user
 import dao
-from saleapp import app
+from saleapp import app, login, admin
 import math
 
 
@@ -24,10 +25,48 @@ def common_attribute():
         "cates": dao.load_categories()
     }
 
-@app.route("/login")
+@app.route("/login", methods=["get", "post"])
 def login_my_user():
-    return render_template("login.html")
+    if current_user.is_authenticated:
+        return redirect("/")
+
+    err_msg = None
+    if request.method.__eq__("POST"):
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        user = dao.auth_user(username, password)
+
+        if user:
+            login_user(user)
+            return redirect("/")
+        else:
+            err_msg = "Tài khoản hoặc mật khẩu không đúng!"
+
+    return render_template("login.html", err_msg=err_msg)
+
+@app.route("/admin-login", methods=["POST"])
+def admin_login_process():
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    user = dao.auth_user(username, password)
+
+    if user:
+        login_user(user)
+        return redirect("/admin")
+    else:
+        err_msg = "Tài khoản hoặc mật khẩu không đúng!"
+
+@app.route("/logout")
+def logout_my_user():
+    logout_user()
+    return redirect("/login")
+
+@login.user_loader
+def get_user(user_id):
+    return dao.get_user_by_id(user_id=user_id)
 
 if __name__== "__main__":
     with app.app_context():
-        app.run(debug=True)
+        app.run(debug=True, port=5001)

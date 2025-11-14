@@ -17,9 +17,24 @@
                 </li>
                 {%endfor%}
 
+                {% if current_user.is_authenticated%}
+                <li class="nav-item">
+                    <a class="nav-link active" href="/login">
+                        <img src="{{current_user.avatar}}" width="25">
+                        Chào {{current_user.name}}!
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link active" href="/logout">&#128229;Đăng xuất</a>
+                </li>
+                {% else %}
+
                 <li class="nav-item">
                     <a class="nav-link active" href="/login">&#128229;Đăng nhập</a>
                 </li>
+
+                {% endif %}
             </ul>
             <form class="d-flex" method="get">
                 <input class="form-control me-2" type="text" placeholder="Nhập từ khóa..." name="q">
