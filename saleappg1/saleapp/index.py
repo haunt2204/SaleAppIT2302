@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect
 from flask_login import current_user, login_user, logout_user
 import dao
-from saleapp import app, login
+from saleapp import app, login, admin
 import math
 
 
@@ -16,7 +16,6 @@ def index():
 
 @app.route("/products/<int:id>")
 def details(id):
-
     return render_template("products-details.html", prod=dao.get_product_by_id(id))
 
 @app.context_processor
@@ -28,7 +27,7 @@ def common_attribute():
 @app.route("/login", methods=["get", "post"])
 def login_my_user():
     if current_user.is_authenticated:
-        return redirect("/")
+        return redirect('/')
 
     err_msg = None
     if request.method.__eq__("POST"):
@@ -50,10 +49,27 @@ def logout_my_user():
     logout_user()
     return redirect("/login")
 
+@app.route('/register')
+def register():
+    return render_template('')
+
 @login.user_loader
 def get_user(user_id):
     return dao.get_user_by_id(user_id=user_id)
 
+@app.route('/admin-login', methods=['post'])
+def admin_login_process():
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    user = dao.auth_user(username, password)
+
+    if user:
+        login_user(user)
+        return redirect("/admin")
+    else:
+        err_msg = "Tài khoản hoặc mật khẩu không đúng!"
+
 if __name__== "__main__":
     with app.app_context():
-        app.run(debug=True, port=5001)
+        app.run(debug=True, port=5000)
