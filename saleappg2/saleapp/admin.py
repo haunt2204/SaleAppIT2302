@@ -2,18 +2,31 @@ from flask import redirect
 from flask_admin import Admin, AdminIndexView, expose, BaseView
 from flask_admin.contrib.sqla import ModelView
 from flask_admin.theme import Bootstrap4Theme
-from models import Category, Product
+from models import Category, Product, UserRole
 from saleapp import app, db
 from flask_login import current_user, logout_user
 
 
-class MyCategoryView(ModelView):
+class AuthenticatedView(ModelView):
+    def is_accessible(self) -> bool:
+        return current_user.is_authenticated and current_user.role==UserRole.ADMIN
+
+class MyCategoryView(AuthenticatedView):
     column_list = ['name', 'products']
     column_searchable_list = ['name']
     column_filters = ['name']
 
-    def is_accessible(self) -> bool:
-        return current_user.is_authenticated
+
+
+class MyProductView(AuthenticatedView):
+    column_list = ['name', 'price', 'description', 'image', 'category']
+    column_searchable_list = ['name']
+    column_filters = ['name']
+    can_export = True
+    column_labels = {
+        'name': "Tên sản phẩm",
+        'price': "Giá"
+    }
 
 class MyLogoutView(BaseView):
     @expose('/')
@@ -24,6 +37,11 @@ class MyLogoutView(BaseView):
     def is_accessible(self) -> bool:
         return current_user.is_authenticated
 
+class StatsView(BaseView):
+    @expose('/')
+    def index(self):
+        return self.render('admin/stats.html')
+
 class MyAdminIndexView(AdminIndexView):
     @expose('/')
     def index(self) -> str:
@@ -33,5 +51,6 @@ class MyAdminIndexView(AdminIndexView):
 admin = Admin(app=app, name="E-COMMERCE", theme=Bootstrap4Theme(), index_view=MyAdminIndexView())
 
 admin.add_view(MyCategoryView(Category, db.session))
-admin.add_view(ModelView(Product, db.session))
+admin.add_view(MyProductView(Product, db.session))
+admin.add_view(StatsView("Thống kê"))
 admin.add_view(MyLogoutView("Đăng xuất"))
