@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, session, jsonify
 from flask_login import current_user, login_user, logout_user, login_required
 import dao
-from saleapp import app, login, admin, db
+from saleapp import app, login, admin, db, utils
 import math
 import cloudinary.uploader
 from decorators import anonymous_required
@@ -24,7 +24,8 @@ def details(id):
 @app.context_processor
 def common_attribute():
     return {
-        "cates": dao.load_categories()
+        "cates": dao.load_categories(),
+        "stats_cart": utils.count_cart(session.get('cart'))
     }
 
 @app.route('/register', methods=['get', 'post'])
@@ -67,7 +68,8 @@ def login_my_user():
 
         if user:
             login_user(user)
-            return redirect("/")
+            next = request.args.get("next")
+            return redirect(next if next else "/")
         else:
             err_msg = "Tài khoản hoặc mật khẩu không đúng!"
 
@@ -137,11 +139,42 @@ def add_to_cart():
 
     print(session['cart'])
 
-    return jsonify({
-        "total_quantity": 0,
-        "total_amount": 0
-    })
+    return jsonify(utils.count_cart(cart))
+
+@app.route('/api/carts/<id>', methods=['put'])
+def update_cart(id):
+    cart = session.get('cart')
+
+    if cart and id in cart:
+        cart[id]['quantity'] = request.json.get("quantity")
+        session['cart'] = cart
+
+    return jsonify(utils.count_cart(cart))
+
+@app.route('/api/carts/<id>', methods=['delete'])
+def delete_cart(id):
+    cart = session.get('cart')
+
+    if cart and id in cart:
+        del session['cart'][id]
+        session['cart'] = cart
+
+    return jsonify(utils.count_cart(cart))
+
+@app.route('/api/pay', methods=['post'])
+@login_required
+def pay():
+    cart = session.get('cart')
+
+    try:
+        dao.add_receipt(cart)
+    except Exception as ex:
+        print(ex)
+        return jsonify({"status": 500, "err_msg": ex})
+    else:
+        del session['cart']
+        return jsonify({"status": 200})
 
 if __name__== "__main__":
     with app.app_context():
-        app.run(debug=True, port=5001)
+        app.run(debug=True, port=5000)

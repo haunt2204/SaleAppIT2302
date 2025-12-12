@@ -3,9 +3,21 @@ from flask_admin import Admin, AdminIndexView, expose, BaseView
 from flask_admin.contrib.sqla import ModelView
 from flask_admin.theme import Bootstrap4Theme
 from models import Category, Product, UserRole
-from saleapp import app, db
+from saleapp import app, db, dao
 from flask_login import current_user, logout_user
+from wtforms import TextAreaField
+from wtforms.widgets import TextArea
 
+class CKTextAreaWidget(TextArea):
+    def __call__(self, field, **kwargs):
+        if kwargs.get('class'):
+            kwargs['class'] += ' ckeditor'
+        else:
+            kwargs.setdefault('class', 'ckeditor')
+        return super(CKTextAreaWidget, self).__call__(field, **kwargs)
+
+class CKTextAreaField(TextAreaField):
+    widget = CKTextAreaWidget()
 
 class AuthenticatedView(ModelView):
     def is_accessible(self) -> bool:
@@ -28,6 +40,11 @@ class MyProductView(AuthenticatedView):
         'price': "Giá"
     }
 
+    extra_js = ['//cdn.ckeditor.com/4.6.0/standard/ckeditor.js']
+    form_overrides = {
+        "description": CKTextAreaField
+    }
+
 class MyLogoutView(BaseView):
     @expose('/')
     def index(self) -> str:
@@ -45,7 +62,7 @@ class StatsView(BaseView):
 class MyAdminIndexView(AdminIndexView):
     @expose('/')
     def index(self) -> str:
-        return self.render('admin/index.html')
+        return self.render('admin/index.html', cate_stats=dao.count_product_by_cate())
 
 
 admin = Admin(app=app, name="E-COMMERCE", theme=Bootstrap4Theme(), index_view=MyAdminIndexView())
